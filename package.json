@@ -1,0 +1,33 @@
+{
+  "name": "react-ive-forms",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WSITS/react-ive-forms.git"
+  },
+  "keywords": [
+    "react",
+    "reactive-forms",
+    "forms"
+  ],
+  "author": "Chris Margroff",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/WSITS/react-ive-forms/issues"
+  },
+  "homepage": "https://github.com/WSITS/react-ive-forms#readme",
+  "dependencies": {
+    "react": "^17.0.2",
+    "rxjs": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.14",
+    "typescript": "^4.3.5"
+  }
+}
