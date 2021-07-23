@@ -1,8 +1,9 @@
-import { from, Subject } from "rxjs";
+import { from, Subject, Subscription } from "rxjs";
 import { coerceToAsyncValidator, coerceToValidator, isOptionsObj, _find } from "./controlUtils";
 import { FormArray } from "./FormArray";
 import { FormGroup } from "./FormGroup";
 import {
+  AsyncValidatorFn,
   DISABLED,
   FieldStatus,
   FormHooks,
@@ -25,8 +26,8 @@ import {
  * instantiated directly.
  */
 export abstract class AbstractControl {
-  public validator: ValidatorFn | undefined;
-  public asyncValidator: Promise<ValidatorFn> | undefined;
+  public validator: ValidatorFn | null = null;
+  public asyncValidator: AsyncValidatorFn | null = null;
   public status: FieldStatus = "VALID";
   public errors: ValidationErrors | null = null;
   public touched = false;
@@ -36,10 +37,12 @@ export abstract class AbstractControl {
   public statusChanges: Subject<any>;
   public stateChanges: Subject<any>;
   public valueChanges: Subject<any>;
-  protected _pendingChange = this.updateOn !== "change";
+  public value: any;
+  protected abstract _pendingChange = this.updateOn !== "change";
   protected _pendingDirty = false;
   protected _pendingTouched = false;
-  private _value: any;
+  protected _asyncValidationSubscription: Subscription;
+  protected abstract _onCollectionChange: () => void;
   private _parent: AbstractControl | null = null;
   private _updateOn: FormHooks = "change";
   private _onDisabledChange: Array<(disabled: boolean) => void> = [];
@@ -47,9 +50,13 @@ export abstract class AbstractControl {
    * @param {Function|null} validator
    * @param {Function|null} asyncValidator
    */
-  constructor(validator?: ValidatorFn, asyncValidator?: Promise<ValidatorFn>) {
+  constructor(validator: ValidatorFn | null = null, asyncValidator: AsyncValidatorFn | null = null) {
     this.validator = validator;
     this.asyncValidator = asyncValidator;
+    this.statusChanges = new Subject();
+    this.stateChanges = new Subject();
+    this.valueChanges = new Subject();
+    this._asyncValidationSubscription = new Subject().subscribe();
     // this.hasError = this.hasError.bind(this);
     // this.getError = this.getError.bind(this);
     // this.reset = this.reset.bind(this);
@@ -60,9 +67,6 @@ export abstract class AbstractControl {
   public abstract reset(value: any, options?: UpdateOptions): void;
   public abstract setValue(value: any, options?: UpdateOptions): void;
   public abstract patchValue(value: any, options?: UpdateOptions): void;
-  public get value(): any {
-    return this._value;
-  }
   /**
    * Returns the update strategy of the `AbstractControl` (i.e.
    * the event on which the control will update itself).
@@ -444,7 +448,7 @@ export abstract class AbstractControl {
    * @param {String} errorCode
    * @param {(String|Number)[]|String} path
    */
-  public getError(errorCode: string, path: Array<string | number> | string): any | null{
+  public getError(errorCode: string, path: Array<string | number> | string): any | null {
     const control = path ? this.get(path) : this;
     return control && control.errors ? control.errors[errorCode] : null;
   }
@@ -464,13 +468,13 @@ export abstract class AbstractControl {
    * Empties out the sync validator list.
    */
   public clearValidators(): void {
-    this.validator = undefined;
+    this.validator = null;
   }
   /**
    * Empties out the async validator list.
    */
   public clearAsyncValidators(): void {
-    this.asyncValidator = undefined;
+    this.asyncValidator = null;
   }
   /**
    * @param {FormGroup|FormArray} parent
@@ -479,10 +483,6 @@ export abstract class AbstractControl {
   public setParent(parent: FormGroup | FormArray): void {
     this._parent = parent;
   }
-  protected abstract _forEachChild(cb: (c: AbstractControl) => void): void;
-  protected abstract _updateValue(): void;
-  protected abstract _allControlsDisabled(): boolean;
-  protected abstract _anyControls(cb: (c: AbstractControl) => boolean): boolean;
   protected _initObservables(): void {
     this.valueChanges = new Subject();
     this.statusChanges = new Subject();
@@ -523,6 +523,10 @@ export abstract class AbstractControl {
       this._parent._updateTouched(opts);
     }
   }
+  protected abstract _forEachChild(cb: (c: AbstractControl) => void): void;
+  protected abstract _updateValue(): void;
+  protected abstract _allControlsDisabled(): boolean;
+  protected abstract _anyControls(cb: (c: AbstractControl) => boolean): boolean;
   /**
    * @param {Boolean} onlySelf
    */
@@ -557,15 +561,18 @@ export abstract class AbstractControl {
    * @param {Booelan} emitEvent
    * @return {void}
    */
-  private _runAsyncValidator(emitEvent): void {
+  private _runAsyncValidator(emitEvent: boolean): void {
     if (this.asyncValidator) {
       this.status = PENDING;
       const obs = from(this.asyncValidator(this));
       this._asyncValidationSubscription = obs.subscribe(
-        (errors: ValidationErrors) =>
-        this.setErrors(errors, {
-          emitEvent
-        })
+        {
+          error: (errors: ValidationErrors) => {
+            this.setErrors(errors, {
+              emitEvent
+            })
+          }
+        }
       );
     }
   }

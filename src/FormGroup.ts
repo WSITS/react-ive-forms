@@ -1,7 +1,15 @@
 import { AbstractControl } from "./AbstractControl";
+import { coerceToAsyncValidator, coerceToValidator } from "./controlUtils";
+import { FormControl } from "./FormControl";
+import { UpdateOptions, ValidatorFn, ValidatorOptions } from "./types";
 
 export class FormGroup extends AbstractControl {
-  constructor(controls, validatorOrOpts, asyncValidator) {
+  public controls: { [key: string]: AbstractControl } = {};
+  constructor(
+    controls: { [key: string]: AbstractControl },
+    validatorOrOpts?: ValidatorFn | ValidatorFn[] | ValidatorOptions,
+    asyncValidator?: ValidatorFn | ValidatorFn[]
+  ) {
     super(
       coerceToValidator(validatorOrOpts),
       coerceToAsyncValidator(asyncValidator, validatorOrOpts)
@@ -15,7 +23,7 @@ export class FormGroup extends AbstractControl {
       onlySelf: true,
       emitEvent: false
     });
-    this.handleSubmit = e => {
+    this.handleSubmit = (e: Event) => {
       if (e) {
         e.preventDefault();
       }
@@ -37,7 +45,7 @@ export class FormGroup extends AbstractControl {
    * @param {String} controlName
    * @return {Boolean}
    */
-  contains(controlName) {
+  public contains(controlName: string): boolean {
     return (
       this.controls.hasOwnProperty(controlName) &&
       this.controls[controlName].enabled
@@ -52,7 +60,7 @@ export class FormGroup extends AbstractControl {
    * @param {AbstractControl} control
    * @return {AbstractControl}
    */
-  registerControl(name, control) {
+  public registerControl(name: string, control: AbstractControl): AbstractControl {
     if (this.controls[name]) return this.controls[name];
     this.controls[name] = control;
     control.setParent(this);
@@ -66,7 +74,7 @@ export class FormGroup extends AbstractControl {
    * @param {AbstractControl} control
    * @return {void}
    */
-  addControl(name, control) {
+  public addControl(name: string, control: AbstractControl): void {
     this.registerControl(name, control);
     this.updateValueAndValidity();
     this._onCollectionChange();
@@ -77,9 +85,11 @@ export class FormGroup extends AbstractControl {
    * @param {String} name
    * @return {void}
    */
-  removeControl(name) {
+  public removeControl(name: string): void {
     if (this.controls[name])
-      this.controls[name]._registerOnCollectionChange(() => {});
+      this.controls[name]._registerOnCollectionChange(() => {
+        // empty
+      });
     delete this.controls[name];
     this.updateValueAndValidity();
     this._onCollectionChange();
@@ -91,9 +101,11 @@ export class FormGroup extends AbstractControl {
    * @param {AbstractControl} control
    * @return {void}
    */
-  setControl(name, control) {
+  public setControl(name: string, control: AbstractControl): void {
     if (this.controls[name])
-      this.controls[name]._registerOnCollectionChange(() => {});
+      this.controls[name]._registerOnCollectionChange(() => {
+        // empty
+      });
     delete this.controls[name];
     if (control) this.registerControl(name, control);
     this.updateValueAndValidity();
@@ -114,7 +126,7 @@ export class FormGroup extends AbstractControl {
    * @param {{onlySelf: boolean, emitEvent: boolean}} options
    * @return {void}
    */
-  setValue(value, options = {}) {
+  public setValue(value: any, options: UpdateOptions = {}): void {
     this._checkAllValuesPresent(value);
     Object.keys(value).forEach(name => {
       this._throwIfControlMissing(name);
@@ -131,8 +143,8 @@ export class FormGroup extends AbstractControl {
    * @param {{onlySelf: boolean, emitEvent: boolean}} options
    * @return {void}
    */
-  reset(value = {}, options = {}) {
-    this._forEachChild((control, name) => {
+  public reset(value: {[key: string]: any} = {}, options: UpdateOptions = {}): void {
+    this._forEachChild((control: AbstractControl, name: string) => {
       control.reset(value[name], {
         onlySelf: true,
         emitEvent: options.emitEvent
@@ -162,7 +174,7 @@ export class FormGroup extends AbstractControl {
    * @param {{onlySelf: boolean, emitEvent: boolean}} options
    * @return {void}
    */
-  patchValue(value, options = {}) {
+  public patchValue(value: any, options: UpdateOptions = {}): void {
     Object.keys(value).forEach(name => {
       if (this.controls[name]) {
         this.controls[name].patchValue(value[name], {
@@ -179,46 +191,58 @@ export class FormGroup extends AbstractControl {
    * If you'd like to include all values regardless of disabled status, use this method.
    * Otherwise, the `value` property is the best way to get the value of the group.
    */
-  getRawValue() {
-    return this._reduceChildren({}, (acc, control, name) => {
+  public getRawValue(): { [key: string]: any } {
+    return this._reduceChildren({}, (acc, control: AbstractControl, name: string) => {
       acc[name] =
         control instanceof FormControl ? control.value : control.getRawValue();
       return acc;
     });
   }
+  protected _onCollectionChange = (): void => {
+    // empty
+  }
+  protected _updateValue(): void {
+    this.value = this._reduceValue();
+  }
   /**
    * @param {{(v: any, k: String) => void}} callback
    * @return {void}
    */
-  _forEachChild(callback) {
+  protected _forEachChild(callback: (c: AbstractControl, name: string) => void): void {
     Object.keys(this.controls).forEach(k => callback(this.controls[k], k));
   }
-
-  _onCollectionChange() {}
+  /**
+   * @return {Boolean}
+   */
+   protected _allControlsDisabled(): boolean {
+    for (const controlName of Object.keys(this.controls)) {
+      if (this.controls[controlName].enabled) {
+        return false;
+      }
+    }
+    return Object.keys(this.controls).length > 0 || this.disabled;
+  }
   /**
    * @param {Function} condition
    * @return {Boolean}
    */
-  _anyControls(condition) {
+  protected _anyControls(condition: (c: AbstractControl) => boolean): boolean {
     let res = false;
     this._forEachChild((control, name) => {
       res = res || (this.contains(name) && condition(control));
     });
     return res;
   }
-  _updateValue() {
-    this.value = this._reduceValue();
-  }
-  _reduceValue() {
-    return this._reduceChildren({}, (acc, control, name) => {
+  private _reduceValue(): void {
+    return this._reduceChildren({}, (acc, control: AbstractControl, name: string) => {
       if (control.enabled || this.disabled) {
         acc[name] = control.value;
       }
       return acc;
     });
   }
-  _reduceErrors() {
-    return this._reduceChildren({}, (acc, control, name) => {
+  private _reduceErrors(): any {
+    return this._reduceChildren({}, (acc, control: AbstractControl, name: string) => {
       if (control.enabled || this.disabled) {
         acc[name] = control.errors;
       }
@@ -228,31 +252,20 @@ export class FormGroup extends AbstractControl {
   /**
    * @param {Function} fn
    */
-  _reduceChildren(initValue, fn) {
+  private _reduceChildren(initValue: any, fn: (res: any, control: AbstractControl, name?: string) => void): any {
     let res = initValue;
     this._forEachChild((control, name) => {
       res = fn(res, control, name);
     });
     return res;
   }
-  _setUpControls() {
-    this._forEachChild(control => {
+  private _setUpControls(): void {
+    this._forEachChild((control: AbstractControl) => {
       control.setParent(this);
       control._registerOnCollectionChange(this._onCollectionChange);
     });
   }
-  /**
-   * @return {Boolean}
-   */
-  _allControlsDisabled() {
-    for (const controlName of Object.keys(this.controls)) {
-      if (this.controls[controlName].enabled) {
-        return false;
-      }
-    }
-    return Object.keys(this.controls).length > 0 || this.disabled;
-  }
-  _checkAllValuesPresent(value) {
+  private _checkAllValuesPresent(value: any): void {
     this._forEachChild((control, name) => {
       if (value[name] === undefined) {
         throw new Error(
@@ -261,7 +274,7 @@ export class FormGroup extends AbstractControl {
       }
     });
   }
-  _throwIfControlMissing(name) {
+  private _throwIfControlMissing(name: string): void {
     if (!Object.keys(this.controls).length) {
       throw new Error(`
         There are no form controls registered with this group yet.
@@ -271,7 +284,7 @@ export class FormGroup extends AbstractControl {
       throw new Error(`Cannot find form control with name: ${name}.`);
     }
   }
-  _syncPendingControls() {
+  private _syncPendingControls(): boolean {
     let subtreeUpdated = this._reduceChildren(false, (updated, child) => {
       return child._syncPendingControls() ? true : updated;
     });

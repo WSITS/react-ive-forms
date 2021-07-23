@@ -6,7 +6,7 @@ import { UpdateOptions, ValidatorFn, ValidatorOptions } from "./types";
 export class FormArray extends AbstractControl {
   public controls: AbstractControl[] = [];
   public validatorOrOpts: ValidatorOptions;
-  constructor(controls: AbstractControl = [], validatorOrOpts?: Validator | ValidatorOptions, asyncValidator?: ValidatorFn) {
+  constructor(controls: AbstractControl[] = [], validatorOrOpts?: ValidatorFn | ValidatorOptions, asyncValidator?: ValidatorFn) {
     super(
       coerceToValidator(validatorOrOpts),
       coerceToAsyncValidator(asyncValidator, validatorOrOpts)
@@ -19,20 +19,20 @@ export class FormArray extends AbstractControl {
       onlySelf: true,
       emitEvent: false
     });
-    this.handleSubmit = e => {
-      if (e) {
-        e.preventDefault();
-      }
-      if (this._anyControlsUnsubmitted()) {
-        this.markAsSubmitted({
-          emitEvent: false
-        });
-      }
-      if (!this._syncPendingControls()) {
-        this.updateValueAndValidity();
-      }
-    };
   }
+  public handleSubmit = (e: Event) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (this._anyControlsUnsubmitted()) {
+      this.markAsSubmitted({
+        emitEvent: false
+      });
+    }
+    if (!this._syncPendingControls()) {
+      this.updateValueAndValidity();
+    }
+  };
   /**
    * Get the `AbstractControl` at the given `index` in the array.
    * @param {Number} index
@@ -72,7 +72,9 @@ export class FormArray extends AbstractControl {
    */
   public removeAt(index: number): void {
     if (this.controls[index])
-      this.controls[index]._registerOnCollectionChange(() => {});
+      this.controls[index]._registerOnCollectionChange(() => {
+        // empty
+      });
     this.controls.splice(index, 1);
     this.updateValueAndValidity();
     this._onCollectionChange();
@@ -85,7 +87,9 @@ export class FormArray extends AbstractControl {
    */
   public setControl(index: number, control: AbstractControl): void {
     if (this.controls[index])
-      this.controls[index]._registerOnCollectionChange(() => {});
+      this.controls[index]._registerOnCollectionChange(() => {
+        // empty
+      });
     this.controls.splice(index, 1);
 
     if (control) {
@@ -168,22 +172,49 @@ export class FormArray extends AbstractControl {
    * @return {any[]}
    */
   public getRawValue(): any[] {
-    return this.controls.map(control => {
+    return this.controls.map((control: AbstractControl) => {
       return control instanceof FormControl
         ? control.value
         : control.getRawValue();
     });
   }
 
-  _syncPendingControls() {
-    let subtreeUpdated = this.controls.reduce((updated, child) => {
+  protected _onCollectionChange = () => {
+    // empty
+  }
+
+  protected _forEachChild(cb: (c: AbstractControl, index: number) => void): void {
+    this.controls.forEach((control, index) => {
+      cb(control, index);
+    });
+  }
+
+  protected _updateValue(): void {
+    this.value = this.controls
+      .filter(control => control.enabled || this.disabled)
+      .map(control => control.value);
+  }
+
+  protected _anyControls(condition: (c: AbstractControl) => boolean): boolean {
+    return this.controls.some(control => control.enabled && condition(control));
+  }
+
+  protected _allControlsDisabled(): boolean {
+    for (const control of this.controls) {
+      if (control.enabled) return false;
+    }
+    return this.controls.length > 0 || this.disabled;
+  }
+
+  private _syncPendingControls(): boolean {
+    const subtreeUpdated = this.controls.reduce((updated, child) => {
       return child._syncPendingControls() ? true : updated;
     }, false);
     if (subtreeUpdated) this.updateValueAndValidity();
     return subtreeUpdated;
   }
 
-  _throwIfControlMissing(index) {
+  private _throwIfControlMissing(index: number): void {
     if (!this.controls.length) {
       throw new Error(`
         There are no form controls registered with this array yet.
@@ -194,27 +225,11 @@ export class FormArray extends AbstractControl {
     }
   }
 
-  _forEachChild(cb) {
-    this.controls.forEach((control, index) => {
-      cb(control, index);
-    });
-  }
-
-  _updateValue() {
-    this.value = this.controls
-      .filter(control => control.enabled || this.disabled)
-      .map(control => control.value);
-  }
-
-  _anyControls(condition) {
-    return this.controls.some(control => control.enabled && condition(control));
-  }
-
-  _setUpControls() {
+  private _setUpControls(): void {
     this._forEachChild(control => this._registerControl(control));
   }
 
-  _checkAllValuesPresent(value) {
+  private _checkAllValuesPresent(value: any): void {
     this._forEachChild((control, i) => {
       if (value[i] === undefined) {
         throw new Error(`Must supply a value for form control at index: ${i}.`);
@@ -222,17 +237,8 @@ export class FormArray extends AbstractControl {
     });
   }
 
-  _allControlsDisabled() {
-    for (const control of this.controls) {
-      if (control.enabled) return false;
-    }
-    return this.controls.length > 0 || this.disabled;
-  }
-
-  _registerControl(control) {
+  private _registerControl(control: AbstractControl): void {
     control.setParent(this);
     control._registerOnCollectionChange(this._onCollectionChange);
   }
-
-  _onCollectionChange() {}
 }

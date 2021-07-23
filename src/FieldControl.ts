@@ -1,6 +1,11 @@
 import React, { Component } from 'react'
+import { AbstractControl } from "./AbstractControl";
 import configureControl from './configureControl'
 import Field from './Field'
+import { FormArray } from "./FormArray";
+import { FormControl } from "./FormControl";
+import { FormGroup } from "./FormGroup";
+import { ValidatorFn } from "./types";
 
 type FormState = {
   value: any
@@ -31,7 +36,7 @@ export default class FieldControl extends Component<IFieldControlProps> {
   public defaultProps = {
     strict: true
   }
-  private control: FormControl
+  private control: AbstractControl | null
   constructor(props: IFieldControlProps, context: ContextType) {
     super(props, context)
     this.control = configureControl(props, context, 'FormControl')

@@ -1,6 +1,6 @@
 import { concatAll, from, scheduled } from 'rxjs';
 import { AbstractControl } from "./AbstractControl";
-import { ValidationErrors, ValidatorFn } from "./types";
+import { AsyncValidatorFn, ValidationErrors, ValidatorFn } from "./types";
 
 function isEmptyInputValue(value: any): boolean {
   return value == null || value.length === 0
@@ -10,6 +10,7 @@ function isPresent(o: ValidatorFn | null | undefined): boolean {
 }
 function _mergeErrors(arrayOfErrors: ValidationErrors[])
 : ValidationErrors | null {
+  // tslint:disable-next-line: no-shadowed-variable
   const res = arrayOfErrors.reduce((res, errors) => {
     return errors != null ? Object.assign({}, res, errors) : res
   }, {})
@@ -17,12 +18,12 @@ function _mergeErrors(arrayOfErrors: ValidationErrors[])
 }
 function _executeValidators(
   control: AbstractControl, validators: ValidatorFn[]
-) {
+): Array<ValidationErrors | null> {
   return validators.map(v => v(control))
 }
 function _executeAsyncValidators(
   control: AbstractControl, validators: ValidatorFn[]
-) {
+): Array<ValidationErrors | null> {
   return validators.map(v => v(control))
 }
 
@@ -158,7 +159,7 @@ export default class Validators {
    */
   public static composeAsync(
     validators?: Array<ValidatorFn | null | undefined>
-  ): ValidatorFn | null {
+  ): AsyncValidatorFn | null {
     if (!validators) return null;
     const presentValidators = validators.filter(isPresent) as ValidatorFn[]
     if (presentValidators.length === 0) return null;

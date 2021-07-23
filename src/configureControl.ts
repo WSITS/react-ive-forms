@@ -27,7 +27,7 @@ const configureControl = (props, context, reference) => {
     } else if (reference === 'FormControl' && control instanceof FormControl) {
       returnControl = control
     } else {
-      warning(null, `Control should be an instance of ${reference}.`)
+      warning(undefined, `Control should be an instance of ${reference}.`)
     }
   } else {
     if (name) {

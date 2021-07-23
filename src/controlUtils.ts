@@ -1,8 +1,8 @@
 import { AbstractControl } from "./AbstractControl";
 import { FormArray } from "./FormArray";
 import { FormGroup } from "./FormGroup";
-import { ValidatorFn, ValidatorOptions } from "./types";
-import { isEvent, isReactNative } from "./util";
+import { AsyncValidatorFn, ValidatorFn, ValidatorOptions } from "./types";
+import { isEvent, isReactNative } from "./utils";
 import Validators from "./validators";
 
 /**
@@ -63,7 +63,7 @@ export function _find(
  * @return {Boolean}
  */
 export function isOptionsObj(
-  validatorOrOpts: ValidatorOptions | ValidatorFn
+  validatorOrOpts: ValidatorOptions | ValidatorFn | ValidatorFn[] | null
 ): boolean {
   return (
     validatorOrOpts != null &&
@@ -104,14 +104,14 @@ export function composeValidators(validators: ValidatorFn[]): ValidatorFn | null
  * @param {Function[]} validators
  * @return {Function|null}
  */
-export function composeAsyncValidators(validators: ValidatorFn[]): ValidatorFn | null {
+export function composeAsyncValidators(validators: ValidatorFn[]): AsyncValidatorFn | null {
   return validators != null
     ? Validators.composeAsync(validators.map(normalizeAsyncValidator))
     : null;
 }
 
-export function coerceToValidator(validatorOrOpts: ValidatorFn | ValidatorOptions = {}):
-ValidatorFn | ValidatorOptions | null {
+export function coerceToValidator(validatorOrOpts: ValidatorFn | ValidatorFn[] | ValidatorOptions | null = {}):
+ValidatorFn | null {
   const validator = isOptionsObj(validatorOrOpts)
     ? validatorOrOpts.validators
     : validatorOrOpts;
@@ -121,8 +121,8 @@ ValidatorFn | ValidatorOptions | null {
 }
 
 export function coerceToAsyncValidator(
-  asyncValidator: ValidatorFn, validatorOrOpts: ValidatorFn | ValidatorOptions = {}
-) {
+  asyncValidator: ValidatorFn | ValidatorFn[] | null, validatorOrOpts: ValidatorFn | ValidatorOptions = {}
+): AsyncValidatorFn | null {
   const origAsyncValidator = isOptionsObj(validatorOrOpts)
     ? validatorOrOpts.asyncValidators
     : asyncValidator;

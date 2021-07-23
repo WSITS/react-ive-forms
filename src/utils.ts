@@ -1,4 +1,4 @@
-import { FormControl } from "./FormControl";
+import { AbstractControl } from "./AbstractControl";
 
 export const isReactNative = () =>
   typeof window !== "undefined" &&
@@ -26,6 +26,8 @@ export const propsToBeMap = {
   pending: "pending",
   pendingValue: "_pendingValue"
 };
+type NativeInputProp = "value" | "onValueChange" | "onChange" | "onBlur" | "onFocus" | "disabled" | "editable"
+type MappedInputProp = "value" | "onChange" | "onBlur" | "onFocus" | "disabled"
 export const controlsToBeMap = {
   ReactNative: {
     switch: {
@@ -51,16 +53,17 @@ export const controlsToBeMap = {
     disabled: "disabled"
   }
 };
+
 export const getAbsoluteValue = (value: any) =>
   value === undefined || value === null ? "" : value;
 
-export const getInputControls = (inputType: string) =>
+export const getInputControls = (inputType: NativeInputProp) =>
   isReactNative()
     ? controlsToBeMap.ReactNative[inputType] ||
       controlsToBeMap.ReactNative.default
     : controlsToBeMap.default;
 
-export function getHandler(inputType, value: any, control: FormControl) {
+export function getHandler(inputType: NativeInputProp, value: any, control: AbstractControl) {
   const controlObject = {};
   const inputControls = getInputControls(inputType);
   Object.keys(inputControls).forEach(key => {
@@ -97,7 +100,7 @@ export function getHandler(inputType, value: any, control: FormControl) {
  * @param {message} string
  * @returns {void}
  */
-export function warning(condition: boolean, message: string): void {
+export function warning(condition?: any, message: string = ""): void {
   if (process.env.NODE_ENV !== "production") {
     if (!condition) {
       console.error(`Warning: ${message}`);
