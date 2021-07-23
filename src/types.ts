@@ -1,3 +1,4 @@
+import { Observable } from "rxjs";
 import { AbstractControl } from "./AbstractControl";
 
 export type FormHooks = "change" | "blur" | "submit";
@@ -34,7 +35,8 @@ export interface ValidatorOptions {
 
 export type ValidationErrors = { [key: string]: any }
 
-export type ValidatorFn = (c: AbstractControl) => null | ValidationErrors
+export type ValidatorFn = (control: AbstractControl) => ValidationErrors | null
+export type AsyncValidatorFn = (control: AbstractControl) => Promise<ValidationErrors | null> | Observable<ValidationErrors | null>
 
 export interface UpdateOptions {
   onlySelf?: boolean,
